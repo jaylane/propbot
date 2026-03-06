@@ -18,7 +18,13 @@ export function startAllMonitors(client: Client): void {
 }
 
 export function startMonitor(client: Client, monitor: MonitorRow): void {
-  stopMonitor(monitor.user_id);
+  // Clear any existing timer without touching the DB active flag
+  const existing = timers.get(monitor.user_id);
+  if (existing) {
+    clearInterval(existing);
+    timers.delete(monitor.user_id);
+  }
+  setMonitorActive(monitor.user_id, true);
   scheduleMonitor(client, monitor);
   console.log(`[Monitor] Started for user ${monitor.user_id} every ${monitor.interval_ms / 1000}s`);
 }
