@@ -1,27 +1,28 @@
 {
   "name": "propbot",
   "version": "1.0.0",
+  "type": "module",
   "description": "Discord bot for tracking sports betting props with live ESPN updates",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node --esm src/index.ts",
-    "register": "ts-node --esm src/register-commands.ts",
+    "dev": "tsx src/index.ts",
+    "register": "tsx src/register-commands.ts",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
     "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
     "node-fetch": "^3.3.2",
-    "openai": "^4.29.0",
-    "dotenv": "^16.4.5"
+    "openai": "^4.29.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.11.24",
-    "typescript": "^5.4.2",
-    "ts-node": "^10.9.2"
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.2"
   },
   "engines": {
     "node": ">=20.0.0"
