@@ -9,6 +9,7 @@ const settings: Command = {
   data: new SlashCommandBuilder()
     .setName('settings')
     .setDescription('Configure your PropBot preferences')
+    .setDMPermission(true)
     .addStringOption(opt =>
       opt.setName('oddskey')
         .setDescription('Your Odds API key (get one free at the-odds-api.com)')

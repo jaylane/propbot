@@ -10,6 +10,7 @@ const odds: Command = {
   data: new SlashCommandBuilder()
     .setName('odds')
     .setDescription('Compare odds across books (requires your Odds API key via /settings)')
+    .setDMPermission(true)
     .addStringOption(opt =>
       opt.setName('game').setDescription('Game (e.g. "Lakers vs Nuggets" or "LAL")').setRequired(true))
     .addStringOption(opt =>

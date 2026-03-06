@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import type { Command } from '../index.js';
-import { getActiveSlips, getLegs, getSlip } from '../db/index.js';
+import { getAllUserActiveSlips, getLegs, getSlip } from '../db/index.js';
 import { evaluateSlip } from '../services/prop-tracker.js';
 import { buildPropListEmbed, buildErrorEmbed, buildSettledEmbed } from '../utils/embeds.js';
 import { COLORS, STAT_DISPLAY } from '../utils/constants.js';
@@ -10,6 +10,7 @@ const status: Command = {
   data: new SlashCommandBuilder()
     .setName('status')
     .setDescription('Check status of active bets')
+    .setDMPermission(true)
     .addIntegerOption(opt =>
       opt.setName('slip').setDescription('Specific slip ID to check').setRequired(false)
     ) as any,
@@ -29,7 +30,7 @@ const status: Command = {
 
 async function showSlipStatus(interaction: ChatInputCommandInteraction, slipId: number): Promise<void> {
   const slip = getSlip(slipId);
-  if (!slip || slip.guild_id !== interaction.guildId) {
+  if (!slip || slip.user_id !== interaction.user.id) {
     await interaction.editReply({ embeds: [buildErrorEmbed(`Slip #${slipId} not found.`)] });
     return;
   }
@@ -74,14 +75,14 @@ async function showSlipStatus(interaction: ChatInputCommandInteraction, slipId: 
 }
 
 async function showAllStatus(interaction: ChatInputCommandInteraction): Promise<void> {
-  const slips = getActiveSlips(interaction.guildId!);
+  const slips = getAllUserActiveSlips(interaction.user.id);
 
   if (!slips.length) {
     await interaction.editReply({
       embeds: [new EmbedBuilder()
         .setColor(COLORS.NEUTRAL)
         .setTitle('📋 No Active Bets')
-        .setDescription('No active bets in this server. Use `/prop add` or `/parlay` to start tracking!')],
+        .setDescription('No active bets found. Use `/prop add` or `/parlay` to start tracking!')],
     });
     return;
   }

@@ -42,6 +42,7 @@ const parlay: Command = {
   data: new SlashCommandBuilder()
     .setName('parlay')
     .setDescription('Track a parlay bet')
+    .setDMPermission(true)
     .addNumberOption(opt =>
       opt.setName('wager').setDescription('Wager amount').setRequired(true))
     .addStringOption(opt =>
@@ -114,7 +115,7 @@ const parlay: Command = {
 
     const slipId = insertSlip({
       userId: interaction.user.id,
-      guildId: interaction.guildId!,
+      guildId: interaction.guildId ?? undefined,
       channelId: interaction.channelId,
       type: 'parlay',
       wager,

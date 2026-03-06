@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, ChannelType, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import type { Command } from '../index.js';
 import { upsertMonitor, getMonitor, setMonitorActive } from '../db/index.js';
 import { startMonitor, stopMonitor } from '../services/monitor.js';
@@ -11,16 +11,11 @@ const DEFAULT_INTERVAL_MIN = parseInt(process.env.MONITOR_INTERVAL_MINUTES ?? '5
 const monitor: Command = {
   data: new SlashCommandBuilder()
     .setName('monitor')
-    .setDescription('Control live game monitoring')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    .setDescription('Control live game monitoring via DMs')
+    .setDMPermission(true)
     .addSubcommand(sub =>
       sub.setName('start')
-        .setDescription('Start posting live updates to a channel')
-        .addChannelOption(opt =>
-          opt.setName('channel')
-            .setDescription('Channel to post updates (defaults to current channel)')
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(false))
+        .setDescription('Start receiving live bet updates via DM')
         .addIntegerOption(opt =>
           opt.setName('interval')
             .setDescription(`Update interval in minutes (default: ${DEFAULT_INTERVAL_MIN})`)
@@ -30,11 +25,11 @@ const monitor: Command = {
     )
     .addSubcommand(sub =>
       sub.setName('stop')
-        .setDescription('Stop live monitoring')
+        .setDescription('Stop live DM updates')
     )
     .addSubcommand(sub =>
       sub.setName('status')
-        .setDescription('Show current monitor configuration')
+        .setDescription('Show your current monitor configuration')
     ) as any,
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -51,58 +46,56 @@ const monitor: Command = {
 };
 
 async function handleStart(interaction: ChatInputCommandInteraction): Promise<void> {
-  const channel = interaction.options.getChannel('channel') ?? interaction.channel;
   const intervalMin = interaction.options.getInteger('interval') ?? DEFAULT_INTERVAL_MIN;
   const intervalMs = intervalMin * 60_000;
 
-  if (!channel || channel.type !== ChannelType.GuildText) {
-    await interaction.reply({ embeds: [buildErrorEmbed('Please specify a valid text channel.')], ephemeral: true });
-    return;
-  }
+  upsertMonitor(interaction.user.id, intervalMs);
 
-  upsertMonitor(interaction.guildId!, channel.id, interaction.user.id, intervalMs);
-
-  const monitorRow = getMonitor(interaction.guildId!)!;
+  const monitorRow = getMonitor(interaction.user.id)!;
   startMonitor(client, monitorRow);
 
   await interaction.reply({
     embeds: [buildSuccessEmbed(
       'Monitor Started',
-      `Posting live updates to <#${channel.id}> every **${intervalMin} minute${intervalMin !== 1 ? 's' : ''}**.\n\nUpdates will show when tracked games are in progress.`
+      `You'll receive live bet updates via DM every **${intervalMin} minute${intervalMin !== 1 ? 's' : ''}**.\n\nUpdates fire when tracked games are in progress.`
     )],
+    ephemeral: true,
+  });
+
+  // Confirm in DM so the user knows DMs are working
+  await interaction.user.send('🔔 PropBot monitor is active — I\'ll DM you live updates as your games progress.').catch(() => {
+    // User may have DMs disabled; the ephemeral reply above already informed them
   });
 }
 
 async function handleStop(interaction: ChatInputCommandInteraction): Promise<void> {
-  const existing = getMonitor(interaction.guildId!);
+  const existing = getMonitor(interaction.user.id);
   if (!existing || !existing.active) {
     await interaction.reply({ embeds: [buildErrorEmbed('No active monitor found.')], ephemeral: true });
     return;
   }
 
-  stopMonitor(interaction.guildId!);
-  await interaction.reply({ embeds: [buildSuccessEmbed('Monitor Stopped', 'Live updates have been paused.')] });
+  stopMonitor(interaction.user.id);
+  await interaction.reply({ embeds: [buildSuccessEmbed('Monitor Stopped', 'Live DM updates have been paused.')], ephemeral: true });
 }
 
 async function handleStatus(interaction: ChatInputCommandInteraction): Promise<void> {
-  const monitor = getMonitor(interaction.guildId!);
+  const monitorRow = getMonitor(interaction.user.id);
 
   const embed = new EmbedBuilder()
-    .setColor(monitor?.active ? COLORS.HIT : COLORS.NEUTRAL)
+    .setColor(monitorRow?.active ? COLORS.HIT : COLORS.NEUTRAL)
     .setTitle('🔍 Monitor Status')
     .setTimestamp();
 
-  if (!monitor) {
-    embed.setDescription('No monitor configured. Use `/monitor start` to set one up.');
+  if (!monitorRow) {
+    embed.setDescription('No monitor configured. Use `/monitor start` to enable live DM updates.');
   } else {
-    embed
-      .addFields(
-        { name: 'Status', value: monitor.active ? '🟢 Active' : '🔴 Stopped', inline: true },
-        { name: 'Channel', value: `<#${monitor.channel_id}>`, inline: true },
-        { name: 'Interval', value: `${monitor.interval_ms / 60_000} min`, inline: true },
-        { name: 'Last Check', value: monitor.last_check ? `<t:${Math.floor(new Date(monitor.last_check).getTime() / 1000)}:R>` : 'Never', inline: true },
-        { name: 'Configured By', value: `<@${monitor.user_id}>`, inline: true },
-      );
+    embed.addFields(
+      { name: 'Status', value: monitorRow.active ? '🟢 Active' : '🔴 Stopped', inline: true },
+      { name: 'Delivery', value: 'Direct Message', inline: true },
+      { name: 'Interval', value: `${monitorRow.interval_ms / 60_000} min`, inline: true },
+      { name: 'Last Check', value: monitorRow.last_check ? `<t:${Math.floor(new Date(monitorRow.last_check).getTime() / 1000)}:R>` : 'Never', inline: true },
+    );
   }
 
   await interaction.reply({ embeds: [embed], ephemeral: true });

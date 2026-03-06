@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import type { Command } from '../index.js';
 import {
-  insertSlip, insertLeg, getLegs, getActiveSlips, getUserActiveSlips,
+  insertSlip, insertLeg, getLegs, getAllUserActiveSlips,
   getSlip, updateSlipStatus,
 } from '../db/index.js';
 import { resolveStatKey } from '../services/prop-tracker.js';
@@ -14,6 +14,7 @@ const prop: Command = {
   data: new SlashCommandBuilder()
     .setName('prop')
     .setDescription('Manage individual prop bets')
+    .setDMPermission(true)
     .addSubcommand(sub =>
       sub.setName('add')
         .setDescription('Track a new prop bet')
@@ -118,7 +119,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
 
   const slipId = insertSlip({
     userId: interaction.user.id,
-    guildId: interaction.guildId!,
+    guildId: interaction.guildId ?? undefined,
     channelId: interaction.channelId,
     type: 'single',
     wager,
@@ -153,7 +154,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
 }
 
 async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
-  const slips = getUserActiveSlips(interaction.user.id, interaction.guildId!);
+  const slips = getAllUserActiveSlips(interaction.user.id);
   const legsMap = new Map<number, any[]>();
   for (const slip of slips) {
     legsMap.set(slip.id, getLegs(slip.id));

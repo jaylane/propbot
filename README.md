@@ -1,15 +1,26 @@
 # PropBot 🎯
 
-A Discord bot for tracking sports betting props with **live ESPN updates**. Add your bets, get real-time stat tracking as games progress, and see P&L summaries when games finish.
+A Discord bot for tracking sports betting props with **live ESPN updates**. Add your bets, get real-time stat tracking as games progress, and see P&L summaries — all delivered via **Direct Message** so your tracking is private and works anywhere.
 
 ## Features
 
 - 📸 **AI Bet Slip Parsing** — Upload a bet slip image and PropBot auto-extracts all your bets
 - 📊 **Live Stat Tracking** — Real-time player stats from ESPN (free, no API key required)
-- 🔔 **Auto Monitoring** — Posts live updates to a channel as games progress
+- 🔔 **DM Monitoring** — Live updates sent to your DMs as games progress (no channel spam)
 - 📈 **Odds Comparison** — Compare lines across sportsbooks (BYOK: bring your own Odds API key)
 - 🎰 **Parlay Support** — Track multi-leg parlays, auto-settle when all games finish
 - 🗄️ **Zero-Config DB** — SQLite, no external database needed
+
+## DM-First Architecture
+
+All bet tracking is **user-scoped and delivered via DM**:
+
+- Commands work in **DMs or any server** — no channel setup required
+- `/monitor start` sends live updates directly to your DMs
+- Each user has their own independent monitor (start/stop without affecting others)
+- Bet history is private to you, not tied to a server
+
+Servers are optional — useful for discovery, but PropBot doesn't need to post to channels.
 
 ## Supported Sports
 
@@ -60,17 +71,19 @@ A Discord bot for tracking sports betting props with **live ESPN updates**. Add 
 /track text:"Edwards 3PM over 3.5 -115, Jokic PRA over 52.5 -110, wager $25"
 ```
 
-### `/monitor start` — Enable live updates
+### `/monitor start` — Enable live DM updates
 ```
-/monitor start channel:#prop-tracker interval:5
+/monitor start                  — DM updates every 5 minutes (default)
+/monitor start interval:2       — DM updates every 2 minutes
 /monitor stop
 /monitor status
 ```
-*(Requires Manage Channels permission)*
 
-### `/status` — Check current stats
+Updates are sent to **your DMs** — no channel permission required.
+
+### `/status` — Check your current stats
 ```
-/status           — All active bets in server
+/status           — All your active bets
 /status slip:3    — Specific slip
 ```
 
@@ -123,14 +136,15 @@ DATABASE_PATH=./data/propbot.db
 
 ### 3. Register Commands
 
-For a specific guild (instant, good for testing):
-```bash
-GUILD_ID=your-guild-id npm run register
-```
+Commands are registered globally (work in DMs + all servers):
 
-For all guilds (takes ~1 hour to propagate):
 ```bash
 npm run register
+```
+
+For guild-specific registration (instant, good for testing):
+```bash
+GUILD_ID=your-guild-id npm run register
 ```
 
 ### 4. Start the Bot
@@ -171,9 +185,8 @@ Both platforms support Docker-based deployment. Set the environment variables in
 
 1. You add a prop with `/prop add` and specify the `game:` argument (e.g. `TOR@MIN`)
 2. PropBot looks up the ESPN game ID for that matchup today
-3. The monitor loop (if started) fetches the box score every N minutes
-4. When the game is `final`, PropBot evaluates all legs and settles the slip
-5. Results are posted to the configured monitor channel
+3. Run `/monitor start` — PropBot will DM you updates every N minutes
+4. When the game is `final`, PropBot evaluates all legs, settles the slip, and DMs you the result
 
 ### Linking Parlays to Games
 
@@ -189,11 +202,11 @@ The `/parlay` command parses free-text legs but can't always auto-link each play
 src/
 ├── index.ts              — Bot entrypoint, command dispatch
 ├── register-commands.ts  — One-time Discord command registration
-├── commands/             — Slash command handlers
+├── commands/             — Slash command handlers (all DM-capable)
 │   ├── prop.ts           — /prop (add/list/remove)
 │   ├── parlay.ts         — /parlay
 │   ├── track.ts          — /track (AI vision parsing)
-│   ├── monitor.ts        — /monitor (start/stop/status)
+│   ├── monitor.ts        — /monitor (start/stop/status) — DMs updates to user
 │   ├── status.ts         — /status
 │   ├── odds.ts           — /odds (BYOK)
 │   └── settings.ts       — /settings
@@ -202,7 +215,7 @@ src/
 │   ├── odds-api.ts       — The Odds API (BYOK)
 │   ├── slip-parser.ts    — AI vision parsing (OpenAI GPT-4o)
 │   ├── prop-tracker.ts   — Leg evaluation engine
-│   └── monitor.ts        — Game monitoring loop
+│   └── monitor.ts        — Per-user game monitoring loop (DM delivery)
 ├── models/               — TypeScript types
 ├── db/                   — SQLite (better-sqlite3)
 └── utils/                — Embeds, constants, crypto
@@ -231,9 +244,18 @@ When adding the bot to a server, it needs:
 - `Read Message History`
 - `Use Slash Commands`
 
-The `/monitor` command requires the user to have **Manage Channels** permission.
+For DM delivery (required for `/monitor`):
+- Enable **Message Content Intent** in the Discord Developer Portal → Bot settings
 
 OAuth2 scopes: `bot`, `applications.commands`
+
+> **Note:** If a user has DMs disabled from server members, PropBot will silently skip DM delivery for the monitor. The bot will log a warning server-side.
+
+---
+
+## Future: Server Features
+
+- TODO: `/leaderboard` — opt-in P&L rankings shown in a server channel
 
 ---
 

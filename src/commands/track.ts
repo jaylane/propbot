@@ -12,6 +12,7 @@ const track: Command = {
   data: new SlashCommandBuilder()
     .setName('track')
     .setDescription('Parse a bet slip image or text and start tracking it')
+    .setDMPermission(true)
     .addAttachmentOption(opt =>
       opt.setName('slip').setDescription('Bet slip image (PNG, JPG, PDF screenshot)').setRequired(false))
     .addStringOption(opt =>
@@ -97,7 +98,7 @@ const track: Command = {
 
     const slipId = insertSlip({
       userId: interaction.user.id,
-      guildId: interaction.guildId!,
+      guildId: interaction.guildId ?? undefined,
       channelId: interaction.channelId,
       type: parsedSlip.type,
       wager: parsedSlip.wager,

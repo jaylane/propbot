@@ -57,7 +57,7 @@ export function updateUserTimezone(userId: string, timezone: string): void {
 
 export interface SlipInsert {
   userId: string;
-  guildId: string;
+  guildId?: string;
   channelId: string;
   type: 'single' | 'parlay';
   wager: number;
@@ -71,7 +71,7 @@ export function insertSlip(slip: SlipInsert): number {
   const result = getDb().prepare(`
     INSERT INTO slips (user_id, guild_id, channel_id, type, wager, to_win, odds, source)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(slip.userId, slip.guildId, slip.channelId, slip.type, slip.wager,
+  `).run(slip.userId, slip.guildId ?? 'DM', slip.channelId, slip.type, slip.wager,
          slip.toWin ?? null, slip.odds ?? null, slip.source ?? 'manual');
   return result.lastInsertRowid as number;
 }
@@ -90,6 +90,12 @@ export function getUserActiveSlips(userId: string, guildId: string) {
   return getDb().prepare(`
     SELECT * FROM slips WHERE user_id = ? AND guild_id = ? AND status = 'active' ORDER BY created_at DESC
   `).all(userId, guildId) as SlipRow[];
+}
+
+export function getAllUserActiveSlips(userId: string) {
+  return getDb().prepare(`
+    SELECT * FROM slips WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC
+  `).all(userId) as SlipRow[];
 }
 
 export function updateSlipStatus(slipId: number, status: 'active' | 'won' | 'lost' | 'push' | 'void'): void {
@@ -151,32 +157,30 @@ export function updateLeg(legId: number, fields: { status?: string; currentValue
 
 // ── Monitors ──────────────────────────────────────────────────────────────────
 
-export function upsertMonitor(guildId: string, channelId: string, userId: string, intervalMs: number): void {
+export function upsertMonitor(userId: string, intervalMs: number): void {
   getDb().prepare(`
-    INSERT INTO monitors (guild_id, channel_id, user_id, interval_ms, active)
-    VALUES (?, ?, ?, ?, 1)
-    ON CONFLICT(guild_id) DO UPDATE SET
-      channel_id = excluded.channel_id,
-      user_id = excluded.user_id,
+    INSERT INTO monitors (user_id, interval_ms, active)
+    VALUES (?, ?, 1)
+    ON CONFLICT(user_id) DO UPDATE SET
       interval_ms = excluded.interval_ms,
       active = 1
-  `).run(guildId, channelId, userId, intervalMs);
+  `).run(userId, intervalMs);
 }
 
-export function getMonitor(guildId: string) {
-  return getDb().prepare('SELECT * FROM monitors WHERE guild_id = ?').get(guildId) as MonitorRow | undefined;
+export function getMonitor(userId: string) {
+  return getDb().prepare('SELECT * FROM monitors WHERE user_id = ?').get(userId) as MonitorRow | undefined;
 }
 
 export function getAllActiveMonitors() {
   return getDb().prepare('SELECT * FROM monitors WHERE active = 1').all() as MonitorRow[];
 }
 
-export function setMonitorActive(guildId: string, active: boolean): void {
-  getDb().prepare('UPDATE monitors SET active = ? WHERE guild_id = ?').run(active ? 1 : 0, guildId);
+export function setMonitorActive(userId: string, active: boolean): void {
+  getDb().prepare('UPDATE monitors SET active = ? WHERE user_id = ?').run(active ? 1 : 0, userId);
 }
 
-export function touchMonitor(guildId: string): void {
-  getDb().prepare('UPDATE monitors SET last_check = CURRENT_TIMESTAMP WHERE guild_id = ?').run(guildId);
+export function touchMonitor(userId: string): void {
+  getDb().prepare('UPDATE monitors SET last_check = CURRENT_TIMESTAMP WHERE user_id = ?').run(userId);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -215,8 +219,6 @@ export interface LegRow {
 
 export interface MonitorRow {
   id: number;
-  guild_id: string;
-  channel_id: string;
   user_id: string;
   interval_ms: number;
   active: number;

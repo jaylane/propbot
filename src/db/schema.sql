@@ -44,9 +44,7 @@ CREATE TABLE IF NOT EXISTS legs (
 
 CREATE TABLE IF NOT EXISTS monitors (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  guild_id TEXT NOT NULL UNIQUE,
-  channel_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
+  user_id TEXT NOT NULL UNIQUE,
   interval_ms INTEGER DEFAULT 300000,
   active INTEGER DEFAULT 1,
   last_check DATETIME,
@@ -62,7 +60,6 @@ CREATE TABLE IF NOT EXISTS game_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_slips_user ON slips(user_id);
-CREATE INDEX IF NOT EXISTS idx_slips_guild ON slips(guild_id);
 CREATE INDEX IF NOT EXISTS idx_slips_status ON slips(status);
 CREATE INDEX IF NOT EXISTS idx_legs_slip ON legs(slip_id);
 CREATE INDEX IF NOT EXISTS idx_legs_game ON legs(game_id);
