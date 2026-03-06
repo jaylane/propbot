@@ -4,7 +4,7 @@ import { upsertMonitor, getMonitor, setMonitorActive } from '../db/index.js';
 import { startMonitor, stopMonitor } from '../services/monitor.js';
 import { buildSuccessEmbed, buildErrorEmbed } from '../utils/embeds.js';
 import { COLORS } from '../utils/constants.js';
-import { client } from '../index.js';
+import { client } from '../client.js';
 
 const DEFAULT_INTERVAL_MIN = parseInt(process.env.MONITOR_INTERVAL_MINUTES ?? '5', 10);
 

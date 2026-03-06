@@ -1,6 +1,7 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, Collection, Interaction, Events } from 'discord.js';
+import { Collection, Interaction, Events } from 'discord.js';
 import type { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { client } from './client.js';
 import { getDb } from './db/index.js';
 import { startAllMonitors } from './services/monitor.js';
 
@@ -34,20 +35,9 @@ async function loadCommands(): Promise<void> {
 
 // ── Client setup ───────────────────────────────────────────────────────────────
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-  ],
-});
-
 client.once(Events.ClientReady, async (c) => {
   console.log(`[PropBot] Logged in as ${c.user.tag}`);
-
-  // Ensure DB is initialized
   getDb();
-
-  // Start any previously configured monitors
   startAllMonitors(client);
 });
 
@@ -87,5 +77,3 @@ main().catch((err) => {
   console.error('[Fatal]', err);
   process.exit(1);
 });
-
-export { client };
